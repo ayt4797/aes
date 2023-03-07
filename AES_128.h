@@ -36,7 +36,7 @@ void SubBytes (unsigned char StateArray[][4]);
 void ShiftRows (unsigned char StateArray[][4]);
 void MixColumns (unsigned char StateArray[][4]);
 
-void SubBytesCalculated (unsigned char StateArray[][4]);
+unsigned char SubBytesCalculated (unsigned char StateArray);
 
 /**********************************************************************
  * Functions for AES decryption

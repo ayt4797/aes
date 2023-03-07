@@ -1,11 +1,10 @@
-#pragma
 #include "AES_128.h"
 #include "eea.c"
-#define POLY 0x283
+#include "stdint.h"
+#define POLY 283
 #define SHIFTARR 0xF1
 
 #define xil_printf(...) printf(__VA_ARGS__)
-
 const unsigned char SBox[256] = {
  // 0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F
  0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,   //0
@@ -39,9 +38,9 @@ const unsigned char RCon[10] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 
 void ExpandKey (unsigned char Key[][4], unsigned char ExpandedKey[][4][4])
 {
 	unsigned char TempKey[4][4];
-	bzero(TempKey, 4*4*sizeof (unsigned char));
+	memset(TempKey, 4*4*sizeof (unsigned char),0);
 	unsigned char TempKeyCol[4];
-	bzero(TempKeyCol, 4*sizeof (unsigned char));
+	memset(TempKeyCol, 4*sizeof (unsigned char),0);
 	int i,j;
 
 	// Encryption Key copied to Expanded Key [0]
@@ -94,8 +93,10 @@ void SubBytes (unsigned char StateArray[][4])
 {
 	int i,j;
 	for(i=0; i<4; i++)
-		for(j=0; j<4; j++)
-			StateArray[i][j] = subBytesCalculated(StateArray[i][j]);
+		for(j=0; j<4; j++){
+//			StateArray[i][j]= SBox[StateArray[i][j]];
+			StateArray[i][j] = SubBytesCalculated(StateArray[i][j]);
+		}
 }
 
 
@@ -152,31 +153,49 @@ void MixColumns (unsigned char StateArray[][4])
  **********************************************************************/
 
 /*
+        ^
  * This function calculates the SBox value on the fly rather than using the table and performing a lookup
  */
+#define ROTL8(x,shift) ((uint8_t) ((x) << (shift)) | ((x) >> (8 - (shift))))
 
-void SubBytesCalculated (unsigned char StateArray)
-{
-	int i,j;
-	unsigned char inverseArr[4][4];
-	unsigned char inverseArrTimeShift;
-	unsigned char shiftArr= SHIFTARR;
-	for(i=0; i<4; i++){
-		for(j=0; j<4; j++){
-			eea(StateArray[i][j],POLY,&inverseArr[i][j]);
-			for(int k = 0;k<8;k++){
-				inverseArrTimeShift += mult(inverseArr[i][j],shiftArr,POLY);
-			if(shiftArr%2==1){//odd
-				shiftArr>>=1;
-				shiftArr+=0x128;
-			}
-			else{
-				shiftArr>>=1;
-			}
-			}
-			StateArray[i][j] = add(inverseArr[i][j],inverseArrTimeShift);
-		}
+unsigned char circShift(unsigned char leftVal, unsigned char rightVal){
+	unsigned char temp =0;
+	for(int i=0;i<rightVal;i++){
+		temp = (leftVal&128); //get lsb
+		leftVal<<=1;
+		if(temp)
+			leftVal+=1;
 	}
+	return leftVal;
+}
+
+unsigned char SubBytesCalculated (unsigned char StateArray)
+{
+	if(StateArray==0)
+		return 0x63;
+	
+	unsigned int b=0;
+//	eea(StateArray,POLY,&b);
+	b=inverseTest(StateArray);
+//	if(mult(b,StateArray,POLY)!=1){
+//		printf("HMMMM");
+//	}
+//	int s1 = add(b,circShift (b,1));
+//	int s2 = add(s1,circShift (b,2));
+//	int s3 = add(s2,circShift (b,3));
+//	int s4 = add(s3,circShift (b,4));
+//	int s5 = add(s4,StateArray);
+//	if(s5>255){
+//		printf("FCK");
+//		exit(-99);
+//	}
+	
+	printf("b: %d",b);
+fflush(stdout);
+	unsigned char r= circShift(b,1)^circShift(b,2)^circShift(b,3)^circShift(b,4)^StateArray^b;
+//	unsigned char r = StateArray^b^ROTL8(b,1)^ROTL8(b,2)^ROTL8(b,3)^ROTL8(b,4);
+	return r;
+//	return s5;
 }
 
 
@@ -194,14 +213,28 @@ void SubBytesCalculated (unsigned char StateArray)
 
 void InvShiftRows (unsigned char StateArray[][4])
 {
-    // Row#1 - rotate 1 column to the left
-	//TODO: Your code here
-
+   	unsigned char x;
+	// Row#1 - rotate 1 column to the left
+	x = StateArray[1][3];
+	StateArray[1][3] = StateArray[1][2];
+	StateArray[1][2] = StateArray[1][1];
+	StateArray[1][1] = StateArray[1][0];
+	StateArray[1][0] = x;
 	// Row#2 - rotate 2 column to the left
-	//TODO: Your code here
-
+	x = StateArray[2][1];
+	StateArray[2][0] = StateArray[2][2];
+	StateArray[2][2] = x;
+	x = StateArray[2][1];
+	StateArray[2][1] = StateArray[2][3];
+	StateArray[2][3] = x;
 	// Row#3 - rotate 3 column to the left
-	//TODO: Your code here
+	x = StateArray[3][1];
+	StateArray[3][3] = StateArray[3][0];
+	StateArray[3][2] = StateArray[3][3];
+	StateArray[3][1] = StateArray[3][2];
+	StateArray[3][0] = x;
+
+
 }
 
 void InvMixColumns (unsigned char StateArray[][4])
@@ -210,9 +243,21 @@ void InvMixColumns (unsigned char StateArray[][4])
 	unsigned char StateArrayTmp[4][4];
 
 	for(i=0;i<4;i++){
-		//TODO: Your code here
+		StateArrayTmp[0][i] =
+				xTime(StateArray[0][i])^xTime(StateArray[1][i])^StateArray[1][i]^
+				StateArray[2][i]^StateArray[3][i];
+		StateArrayTmp[1][i] =
+				StateArray[0][i]^xTime(StateArray[1][i])^xTime(StateArray[2][i])^
+				StateArray[2][i]^StateArray[3][i];
+		StateArrayTmp[2][i] =
+				StateArray[0][i]^StateArray[1][i]^xTime(StateArray[2][i])^
+				xTime(StateArray[3][i])^StateArray[3][i];
+		StateArrayTmp[3][i] =
+				xTime(StateArray[0][i])^StateArray[0][i]^StateArray[1][i]^
+				StateArray[2][i]^xTime(StateArray[3][i]);
 	}
 
+	memcpy(StateArray, StateArrayTmp, 4 * 4 * sizeof(unsigned char));
 	memcpy(StateArray, StateArrayTmp, 4 * 4 * sizeof(unsigned char));
 }
 

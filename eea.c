@@ -43,14 +43,15 @@ int inverseTest(int valueToInvert){
             return i;
         }
     }
-    // perror("No inverse found");
-    // exit(0);
-    // return -99;
+	perror("No inverse found");
+     exit(0);
+    return -99;
 
 }
 int division(int r0, int r1, int* r){
     if(r0>r1){
-        // printf("err r0 > r1");
+	*r=1;
+	return 0;
     }
     int a = r0>r1 ? r0 : r1;
     int b = r0<r1 ? r1 : r1;
@@ -85,7 +86,7 @@ int eea(int r0,int r1,int* inverse){
     int c =0;
     int r=0;
     while (1){
-
+	
         // r2=(r1)%r0;
         q[c]=division(r_back2,r_back1,&r);
         // if(c==0){
@@ -101,15 +102,20 @@ int eea(int r0,int r1,int* inverse){
         r_back2=r_back1;
         r_back1=rn[c];
         // s2=(s0)-(r1/r0)*s1;
-        if (rn[c] ==1||c==100){
+        if (rn[c] ==1){
             break;
         }
+	if(c>500){
+		printf("CRITICAL FAILURE IN MAIN LOOP!\n");
+		break;	
+	}
         c++;
     }
     int b_2Back=0;
     int b_1Back=1;
     int i= 0; //counter
     int bn[100];
+	
     while (1){
 
         bn[i] = add(b_2Back,mult(q[i],b_1Back,283));
@@ -117,9 +123,14 @@ int eea(int r0,int r1,int* inverse){
         b_1Back=bn[i];//25eea
         if (i ==c){
             *inverse= bn[i];
+
             return b_2Back;
         }
+	fflush(stdout);
         i++;
+	if(i>100){
+		printf("Critical FAILURE!");
+		break;
+		}
         }
-
 }
