@@ -2,12 +2,18 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "xparameters.h"
-#include "platform.h"
+// #include "xparameters.h"
+// #include "platform.h"
 
 #include "AES_128.h"
 
 //============================================================================
+#define xil_platform(x) 0
+#define init_platform(x) 0
+#define cleanup_platform(x) 0
+
+#define xil_printf(...) printf(__VA_ARGS__)
+
 
 unsigned char StateArray [4][4];
 unsigned char ExpandedKey[11][4][4];

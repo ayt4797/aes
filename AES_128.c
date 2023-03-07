@@ -1,5 +1,10 @@
-
+#pragma
 #include "AES_128.h"
+#include "eea.c"
+#define POLY 0x283
+#define SHIFTARR 0xF1
+
+#define xil_printf(...) printf(__VA_ARGS__)
 
 const unsigned char SBox[256] = {
  // 0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F
@@ -90,7 +95,7 @@ void SubBytes (unsigned char StateArray[][4])
 	int i,j;
 	for(i=0; i<4; i++)
 		for(j=0; j<4; j++)
-			StateArray[i][j] = SBox[StateArray[i][j]];
+			StateArray[i][j] = subBytesCalculated(StateArray[i][j]);
 }
 
 
@@ -150,9 +155,28 @@ void MixColumns (unsigned char StateArray[][4])
  * This function calculates the SBox value on the fly rather than using the table and performing a lookup
  */
 
-void SubBytesCalculated (unsigned char StateArray[][4])
+void SubBytesCalculated (unsigned char StateArray)
 {
-	//TODO: Your code here
+	int i,j;
+	unsigned char inverseArr[4][4];
+	unsigned char inverseArrTimeShift;
+	unsigned char shiftArr= SHIFTARR;
+	for(i=0; i<4; i++){
+		for(j=0; j<4; j++){
+			eea(StateArray[i][j],POLY,&inverseArr[i][j]);
+			for(int k = 0;k<8;k++){
+				inverseArrTimeShift += mult(inverseArr[i][j],shiftArr,POLY);
+			if(shiftArr%2==1){//odd
+				shiftArr>>=1;
+				shiftArr+=0x128;
+			}
+			else{
+				shiftArr>>=1;
+			}
+			}
+			StateArray[i][j] = add(inverseArr[i][j],inverseArrTimeShift);
+		}
+	}
 }
 
 
