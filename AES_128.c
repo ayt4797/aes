@@ -25,7 +25,7 @@ const unsigned char SBox[256] = {
  0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16 }; //F
 
 //TODO: Put inverse SBox Table here
-
+const unsigned int invMult =0x0e0b0d09;
 
 
 const unsigned char RCon[10] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36};
@@ -94,8 +94,8 @@ void SubBytes (unsigned char StateArray[][4])
 	int i,j;
 	for(i=0; i<4; i++)
 		for(j=0; j<4; j++){
-//			StateArray[i][j]= SBox[StateArray[i][j]];
-			StateArray[i][j] = SubBytesCalculated(StateArray[i][j]);
+			StateArray[i][j]= SBox[StateArray[i][j]];
+			// StateArray[i][j] = SubBytesCalculated(StateArray[i][j]);
 		}
 }
 
@@ -205,10 +205,14 @@ fflush(stdout);
  
 
 
- void InvSubBytes (unsigned char StateArray[][4])
+void InvSubBytes (unsigned char StateArray[][4])
 {
-	int i,j;
-	//TODO: Your code here
+	for(int i=0;i<4;i++){
+		for(int j=0;j<4;j++){
+			unsigned char b=inverseTest(StateArray);
+			StateArray[i][j] = circShift(b,1)^circShift(b,3)^circShift(b,6)^0x5;
+		}
+	}
 }
 
 void InvShiftRows (unsigned char StateArray[][4])
@@ -239,22 +243,22 @@ void InvShiftRows (unsigned char StateArray[][4])
 
 void InvMixColumns (unsigned char StateArray[][4])
 {
-	int i;
+	unsigned int temp = invMult;
 	unsigned char StateArrayTmp[4][4];
 
-	for(i=0;i<4;i++){
-		StateArrayTmp[0][i] =
-				xTime(StateArray[0][i])^xTime(StateArray[1][i])^StateArray[1][i]^
-				StateArray[2][i]^StateArray[3][i];
-		StateArrayTmp[1][i] =
-				StateArray[0][i]^xTime(StateArray[1][i])^xTime(StateArray[2][i])^
-				StateArray[2][i]^StateArray[3][i];
-		StateArrayTmp[2][i] =
-				StateArray[0][i]^StateArray[1][i]^xTime(StateArray[2][i])^
-				xTime(StateArray[3][i])^StateArray[3][i];
-		StateArrayTmp[3][i] =
-				xTime(StateArray[0][i])^StateArray[0][i]^StateArray[1][i]^
-				StateArray[2][i]^xTime(StateArray[3][i]);
+	for(int i=0;i<4;i++){
+		StateArrayTmp[0][i]=0;
+		StateArrayTmp[1][i]=0;
+		StateArrayTmp[2][i]=0;
+		StateArrayTmp[3][i]=0;
+
+		for(int j=0;j<4;j++){
+			StateArrayTmp[0][i]^=mult(StateArray[j][i],circShift(temp,8*j),POLY);
+			StateArrayTmp[1][i]^=mult(StateArray[j][i],circShift(temp,8*j*2),POLY);
+			StateArrayTmp[2][i]^=mult(StateArray[j][i],circShift(temp,8*j*3),POLY);
+			StateArrayTmp[3][i]^=mult(StateArray[j][i],circShift(temp,8*j*4),POLY);
+
+		}
 	}
 
 	memcpy(StateArray, StateArrayTmp, 4 * 4 * sizeof(unsigned char));

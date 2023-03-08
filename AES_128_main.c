@@ -152,6 +152,20 @@ void decrypt() {
 #if (AES_PRINT & AES_PRINT_MAIN)
 	xil_printf("-- Starting Decryption \r\n\n");
 #endif
-
+	printf("key: \n");
+	AES_printf(Key);
+	printf("cipher: \n");
+	AES_printf(StateArray);
+	AddRoundKey(ExpandedKey[10], StateArray);
+	printf("post round key: \n");
+	AES_printf(StateArray);
+	for(int i=10;i>0;i--){
+		InvShiftRows(StateArray);
+		InvSubBytes(StateArray);
+		AddRoundKey(ExpandedKey[i], StateArray);
+		if(i!=0)
+			InvMixColumns(StateArray);
+	}
+	AES_printf(StateArray);
 	//TODO: Your code here
 }
