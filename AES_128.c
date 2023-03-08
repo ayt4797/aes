@@ -3,7 +3,7 @@
 #include "stdint.h"
 #define POLY 283
 #define SHIFTARR 0xF1
-
+#define SCONST 0x63
 #define xil_printf(...) printf(__VA_ARGS__)
 const unsigned char SBox[256] = {
  // 0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F
@@ -192,7 +192,7 @@ unsigned char SubBytesCalculated (unsigned char StateArray)
 	
 	printf("b: %d",b);
 fflush(stdout);
-	unsigned char r= circShift(b,1)^circShift(b,2)^circShift(b,3)^circShift(b,4)^StateArray^b;
+	unsigned char r= circShift(b,1)^circShift(b,2)^circShift(b,3)^circShift(b,4)^b^SCONST;
 //	unsigned char r = StateArray^b^ROTL8(b,1)^ROTL8(b,2)^ROTL8(b,3)^ROTL8(b,4);
 	return r;
 //	return s5;
