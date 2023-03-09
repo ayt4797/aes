@@ -179,6 +179,17 @@ unsigned int circShiftByte(unsigned int leftVal, unsigned int rightVal){
 	}
 	return leftVal;
 }
+unsigned int circShiftByteRight(unsigned int leftVal, unsigned int rightVal){
+	unsigned int temp =0;
+	for(int i=0;i<rightVal;i++){
+		temp = (leftVal&0x000000ff); //get LSB
+	//	printf("t: %x ",temp);
+		leftVal>>=8;
+		if(temp)
+			leftVal+=(temp)<<24;
+	}
+	return leftVal;
+}
 
 
 unsigned char SubBytesCalculated (unsigned char StateArray)
@@ -219,17 +230,30 @@ fflush(stdout);
 
 void InvSubBytes (unsigned char StateArray[][4])
 {
-	
+
 	for(int i=0;i<4;i++){
 		for(int j=0;j<4;j++){
 			if(StateArray[i][j]==0x63){
 				StateArray[i][j]=0x0;
-				break;
+				continue;
+			}
+			if(StateArray[i][j]==0x4f){
+				printf("%x", StateArray[i][j]);
 			}
 			unsigned char b=(StateArray[i][j]);
-			StateArray[i][j] = circShift(b,1)^circShift(b,3)^circShift(b,6)^0x5;
+			if(b==0){
+				printf("HERE");
+			}
+			unsigned char a=circShift(b,1)^circShift(b,3)^circShift(b,6)^0x5;
+			if(a==0){
+				printf("HERE1");
+			}
 
-			StateArray[i][j] =inverseTest(StateArray[i][j]);
+			unsigned char o=inverseTest(a);
+			if(o==0){
+				printf("HERE2");
+			}
+			StateArray[i][j] =o;
 		}
 	}
 }
@@ -267,28 +291,57 @@ void InvMixColumns (unsigned char StateArray[][4])
 	unsigned char StateArrayTmp[4][4];
 	unsigned char invMultArray[4][4];
 		    				             
-	for(int i=0;i<4;i++){				     //0x090b0d09
-		invMultArray[i][3] = (circShiftByte(invMult,i)&(0xff000000))>>24;
-		invMultArray[i][2] = (circShiftByte(invMult,i)&(0x00ff0000))>>16;
-		invMultArray[i][1] = (circShiftByte(invMult,i)&(0x0000ff00))>>8;
-		invMultArray[i][0] = circShiftByte(invMult,i)&(0x000000ff);
+	for(int i=0;i<4;i++){				     		  //0x0e0b0d09
+		invMultArray[i][0] = (circShiftByteRight(invMult,i)&(0xff000000))>>24;
+		// printf(" %x ",(circShiftByteRight(invMult,i)));
+		invMultArray[i][1] = (circShiftByteRight(invMult,i)&(0x00ff0000))>>16;
+		invMultArray[i][2] = (circShiftByteRight(invMult,i)&(0x0000ff00))>>8;
+		invMultArray[i][3] = circShiftByteRight(invMult,i)&(0x000000ff);
 		
 	
 	}
-//	for (int i=0;i<4;i++){
-		for(int j=0;j<4;j++){
-			StateArrayTmp[0][j]=mult(StateArray[0][j],invMultArray[0][j],POLY)^mult(StateArray[1][j],invMultArray[1][j],POLY)^mult(StateArray[2][j],invMultArray[2][j],POLY)^mult(StateArray[3][j],invMultArray[3][j],POLY);
+	// printf("HREE");
 
-			StateArrayTmp[1][j]=mult(StateArray[1][0],invMultArray[1][0],POLY)^mult(StateArray[1][1],invMultArray[1][1],POLY)^mult(StateArray[1][2],invMultArray[1][2],POLY)^mult(StateArray[1][3],invMultArray[1][3],POLY);
+	// for(int i=0;i<4;i++){
+	// 	for(int j=0;j<4;j++){
+	// 		StateArrayTmp[i][j]=0;
+	// 		for(int k=0;k<4;k++){
+	// 			StateArrayTmp[i][j]^=mult((StateArray[i][k]),invMultArray[k][j],POLY);
+	// 		}
+	// 		// AES_printf(StateArrayTmp);
+	// 	}
+	for(int i=0;i<4;i++){
+		StateArrayTmp[0][i] = (mult(StateArray[0][i],0xe,POLY)) ^ (mult(StateArray[1][i],0xb,POLY))^
+			(mult(StateArray[2][i],0xd,POLY)) ^ (mult(StateArray[3][i],0x9,POLY));
 
-			StateArrayTmp[2][j]=mult(StateArray[2][0],invMultArray[2][0],POLY)^mult(StateArray[2][1],invMultArray[2][1],POLY)^mult(StateArray[2][2],invMultArray[2][2],POLY)^mult(StateArray[2][3],invMultArray[2][3],POLY);
 
-			StateArrayTmp[3][j]=mult(StateArray[3][0],invMultArray[3][0],POLY)^mult(StateArray[3][1],invMultArray[3][1],POLY)^mult(StateArray[3][2],invMultArray[3][2],POLY)^mult(StateArray[3][3],invMultArray[3][3],POLY);
+		StateArrayTmp[1][i] = (mult(StateArray[0][i],0x9,POLY)) ^ (mult(StateArray[1][i],0xe,POLY))^
+			(mult(StateArray[2][i],0xb,POLY)) ^ (mult(StateArray[3][i],0xd,POLY));
 
 
-		}
-	AES_printf(invMultArray);
-	memcpy(StateArray, StateArrayTmp, 4 * 4 * sizeof(unsigned char));
+		StateArrayTmp[2][i] = (mult(StateArray[0][i],0xd,POLY)) ^ (mult(StateArray[1][i],0x9,POLY))^
+			(mult(StateArray[2][i],0xe,POLY)) ^ (mult(StateArray[3][i],0xb,POLY));
+
+
+		StateArrayTmp[3][i] = (mult(StateArray[0][i],0xb,POLY)) ^ (mult(StateArray[1][i],0xd,POLY))^
+			(mult(StateArray[2][i],0x9,POLY)) ^ (mult(StateArray[3][i],0xe,POLY));
+	}
+	// }
+	// for(int i=0;i<4;i++){
+	// 	StateArrayTmp[0][i] =
+	// 			mult((StateArray[0][i]),invMultArray[0][i],POLY)^mult((StateArray[1][i]),invMultArray[1][i],POLY)^
+	// 			StateArray[2][i]^StateArray[3][i];
+	// 	StateArrayTmp[1][i] =
+	// 			StateArray[0][i]^xTime(StateArray[1][i])^xTime(StateArray[2][i])^
+	// 			StateArray[2][i]^StateArray[3][i];
+	// 	StateArrayTmp[2][i] =
+	// 			StateArray[0][i]^StateArray[1][i]^xTime(StateArray[2][i])^
+	// 			xTime(StateArray[3][i])^StateArray[3][i];
+	// 	StateArrayTmp[3][i] =
+	// 			xTime(StateArray[0][i])^StateArray[0][i]^StateArray[1][i]^
+	// 			StateArray[2][i]^xTime(StateArray[3][i]);
+	// }
+	// AES_printf(invMultArray);
 	memcpy(StateArray, StateArrayTmp, 4 * 4 * sizeof(unsigned char));
 }
 

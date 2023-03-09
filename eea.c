@@ -133,4 +133,5 @@ int eea(int r0,int r1,int* inverse){
 		break;
 		}
         }
+
 }

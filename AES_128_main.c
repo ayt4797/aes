@@ -159,18 +159,25 @@ void decrypt() {
 	AddRoundKey(ExpandedKey[10], StateArray);
 	printf("post round key: \n");
 	AES_printf(StateArray);
-	for(int i=9;i>0;i--){
+	for(int i=9;i>=0;i--){
+		printf("round: %d\n",i);
 		InvShiftRows(StateArray);
-		AES_printf(StateArray);
+		if(i<=5){printf("post row shift: ");AES_printf(StateArray);}
 		InvSubBytes(StateArray);
-		AES_printf(StateArray);
-		InvSubBytes(StateArray);
+		printf("state array b4 round key & after invSubBytes: ");
+		if(i<=5)AES_printf(StateArray);
+
 		AddRoundKey(ExpandedKey[i], StateArray);
-		printf("Round Key change");
+		printf("Round Key: ");
+		if(i<=5)AES_printf(ExpandedKey[i]);
+		printf("state array after round key: ");
+		if(i<=5)AES_printf(StateArray);
+
+
 		if(i!=0)
 			InvMixColumns(StateArray);
 		AES_printf(StateArray);
-	exit(0);
+	// exit(0);
 	}
 	AES_printf(StateArray);
 	//TODO: Your code here
