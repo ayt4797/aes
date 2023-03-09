@@ -94,8 +94,8 @@ void SubBytes (unsigned char StateArray[][4])
 	int i,j;
 	for(i=0; i<4; i++)
 		for(j=0; j<4; j++){
-			StateArray[i][j]= SBox[StateArray[i][j]];
-			// StateArray[i][j] = SubBytesCalculated(StateArray[i][j]);
+			//StateArray[i][j]= SBox[StateArray[i][j]];
+			StateArray[i][j] = SubBytesCalculated(StateArray[i][j]);
 		}
 }
 
@@ -161,13 +161,25 @@ void MixColumns (unsigned char StateArray[][4])
 unsigned char circShift(unsigned char leftVal, unsigned char rightVal){
 	unsigned char temp =0;
 	for(int i=0;i<rightVal;i++){
-		temp = (leftVal&128); //get lsb
+		temp = (leftVal&128); //get msb
 		leftVal<<=1;
 		if(temp)
 			leftVal+=1;
 	}
 	return leftVal;
 }
+unsigned int circShiftByte(unsigned int leftVal, unsigned int rightVal){
+	unsigned int temp =0;
+	for(int i=0;i<rightVal;i++){
+		temp = (leftVal&0xff000000); //get MSB
+	//	printf("t: %x ",temp);
+		leftVal<<=8;
+		if(temp)
+			leftVal+=(temp>>24);
+	}
+	return leftVal;
+}
+
 
 unsigned char SubBytesCalculated (unsigned char StateArray)
 {
@@ -207,10 +219,17 @@ fflush(stdout);
 
 void InvSubBytes (unsigned char StateArray[][4])
 {
+	
 	for(int i=0;i<4;i++){
 		for(int j=0;j<4;j++){
-			unsigned char b=inverseTest(StateArray);
+			if(StateArray[i][j]==0x63){
+				StateArray[i][j]=0x0;
+				break;
+			}
+			unsigned char b=(StateArray[i][j]);
 			StateArray[i][j] = circShift(b,1)^circShift(b,3)^circShift(b,6)^0x5;
+
+			StateArray[i][j] =inverseTest(StateArray[i][j]);
 		}
 	}
 }
@@ -225,7 +244,7 @@ void InvShiftRows (unsigned char StateArray[][4])
 	StateArray[1][1] = StateArray[1][0];
 	StateArray[1][0] = x;
 	// Row#2 - rotate 2 column to the left
-	x = StateArray[2][1];
+	x = StateArray[2][0];
 	StateArray[2][0] = StateArray[2][2];
 	StateArray[2][2] = x;
 	x = StateArray[2][1];
@@ -233,9 +252,10 @@ void InvShiftRows (unsigned char StateArray[][4])
 	StateArray[2][3] = x;
 	// Row#3 - rotate 3 column to the left
 	x = StateArray[3][1];
-	StateArray[3][3] = StateArray[3][0];
-	StateArray[3][2] = StateArray[3][3];
 	StateArray[3][1] = StateArray[3][2];
+	unsigned char y = StateArray[3][3];
+	StateArray[3][3] = StateArray[3][0];
+	StateArray[3][2] = y;
 	StateArray[3][0] = x;
 
 
@@ -245,22 +265,29 @@ void InvMixColumns (unsigned char StateArray[][4])
 {
 	unsigned int temp = invMult;
 	unsigned char StateArrayTmp[4][4];
-
-	for(int i=0;i<4;i++){
-		StateArrayTmp[0][i]=0;
-		StateArrayTmp[1][i]=0;
-		StateArrayTmp[2][i]=0;
-		StateArrayTmp[3][i]=0;
-
+	unsigned char invMultArray[4][4];
+		    				             
+	for(int i=0;i<4;i++){				     //0x090b0d09
+		invMultArray[i][3] = (circShiftByte(invMult,i)&(0xff000000))>>24;
+		invMultArray[i][2] = (circShiftByte(invMult,i)&(0x00ff0000))>>16;
+		invMultArray[i][1] = (circShiftByte(invMult,i)&(0x0000ff00))>>8;
+		invMultArray[i][0] = circShiftByte(invMult,i)&(0x000000ff);
+		
+	
+	}
+//	for (int i=0;i<4;i++){
 		for(int j=0;j<4;j++){
-			StateArrayTmp[0][i]^=mult(StateArray[j][i],circShift(temp,8*j),POLY);
-			StateArrayTmp[1][i]^=mult(StateArray[j][i],circShift(temp,8*j*2),POLY);
-			StateArrayTmp[2][i]^=mult(StateArray[j][i],circShift(temp,8*j*3),POLY);
-			StateArrayTmp[3][i]^=mult(StateArray[j][i],circShift(temp,8*j*4),POLY);
+			StateArrayTmp[0][j]=mult(StateArray[0][j],invMultArray[0][j],POLY)^mult(StateArray[1][j],invMultArray[1][j],POLY)^mult(StateArray[2][j],invMultArray[2][j],POLY)^mult(StateArray[3][j],invMultArray[3][j],POLY);
+
+			StateArrayTmp[1][j]=mult(StateArray[1][0],invMultArray[1][0],POLY)^mult(StateArray[1][1],invMultArray[1][1],POLY)^mult(StateArray[1][2],invMultArray[1][2],POLY)^mult(StateArray[1][3],invMultArray[1][3],POLY);
+
+			StateArrayTmp[2][j]=mult(StateArray[2][0],invMultArray[2][0],POLY)^mult(StateArray[2][1],invMultArray[2][1],POLY)^mult(StateArray[2][2],invMultArray[2][2],POLY)^mult(StateArray[2][3],invMultArray[2][3],POLY);
+
+			StateArrayTmp[3][j]=mult(StateArray[3][0],invMultArray[3][0],POLY)^mult(StateArray[3][1],invMultArray[3][1],POLY)^mult(StateArray[3][2],invMultArray[3][2],POLY)^mult(StateArray[3][3],invMultArray[3][3],POLY);
+
 
 		}
-	}
-
+	AES_printf(invMultArray);
 	memcpy(StateArray, StateArrayTmp, 4 * 4 * sizeof(unsigned char));
 	memcpy(StateArray, StateArrayTmp, 4 * 4 * sizeof(unsigned char));
 }
